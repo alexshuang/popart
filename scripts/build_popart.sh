@@ -1,12 +1,14 @@
 #!/bin/sh
 
-set -x
+POPART_DIR=${1:-$PWD/popart}
 
-export POPART_INSTALL_DIR=$(pwd)/popart/install_dir/
+export POPART_INSTALL_DIR=$POPART_DIR/install_dir/
 export PKG_CONFIG_PATH="$CAPNPROTO_INSTALL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
-git clone https://github.com/graphcore/popart.git
-cd popart
+cd $POPART_DIR
 mkdir build; cd build;
+
+set -ex
+
 cmake .. \
   -DBOOST_ROOT=$BOOST_INSTALL_DIR \
   -DCapnProto_ROOT=$CAPNPROTO_INSTALL_DIR \
@@ -19,5 +21,7 @@ cmake .. \
   -Dtrompeloeil_ROOT=$TROMPELOEIL_INSTALL_DIR \
   -DCMAKE_INSTALL_PREFIX=$POPART_INSTALL_DIR \
   -GNinja
-ninja -j$(nproc)
-ninja install
+ninja -j64 install
+
+echo "export POPART_INSTALL_DIR=${POPART_INSTALL_DIR}" >> ~/.bashrc
+echo "source $POPART_INSTALL_DIR/enable.sh" >> ~/.bashrc
