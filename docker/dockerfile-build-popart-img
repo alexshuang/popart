@@ -1,7 +1,6 @@
-# only ubuntu:20.04
-# ARG base_image
-# FROM ${base_image}
-FROM ubuntu:20.04
+# base on ubuntu:20.04 only
+ARG base_image
+FROM ${base_image}
 
 LABEL maintainer="alexhu@graphcore.ai"
 
