@@ -147,11 +147,19 @@ std::map<std::string, popart::any> getDictionaryVar(py::dict pydict) {
       dictionary.insert(std::make_pair(key, val.cast<int64_t>()));
     } else if (py::isinstance<py::list>(val)) {
       // Ints
-      std::vector<int64_t> vec;
-      for (auto subval : val) {
-        vec.push_back(subval.cast<int64_t>());
+      if (py::isinstance<py::int_>(val[py::int_(0)])) {
+        std::vector<int64_t> vec;
+        for (auto subval : val) {
+          vec.push_back(subval.cast<int64_t>());
+        }
+        dictionary.insert(std::make_pair(key, vec));
+      } else { // Floats
+        std::vector<float> vec;
+        for (auto subval : val) {
+          vec.push_back(subval.cast<float>());
+        }
+        dictionary.insert(std::make_pair(key, vec));
       }
-      dictionary.insert(std::make_pair(key, vec));
     } else if (py::isinstance<py::float_>(val)) {
       // Float
       dictionary.insert(std::make_pair(key, val.cast<float>()));
