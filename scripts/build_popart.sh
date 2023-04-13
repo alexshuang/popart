@@ -19,5 +19,5 @@ cmake .. \
   -Dtrompeloeil_ROOT=$TROMPELOEIL_INSTALL_DIR \
   -DCMAKE_INSTALL_PREFIX=$POPART_INSTALL_DIR \
   -GNinja
-ninja
+ninja -j$(nproc)
 ninja install
