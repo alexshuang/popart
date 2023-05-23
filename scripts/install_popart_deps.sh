@@ -78,7 +78,7 @@ tar xvfz capnproto-c++-0.7.0.tar.gz
 rm capnproto-c++-0.7.0.tar.gz
 cd capnproto-c++-0.7.0
 ./configure --prefix=$CAPNPROTO_INSTALL_DIR
-make -j$CPUCORES check
+make -j$CPUCORES
 make install
 popd
 
