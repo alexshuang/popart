@@ -23,7 +23,7 @@ tar xvfz protobuf-cpp-3.6.1.tar.gz
 rm protobuf-cpp-3.6.1.tar.gz
 cd protobuf-3.6.1
 CXXFLAGS=-fPIC CFLAGS=-fPIC ./configure --prefix=$PROTOBUF_INSTALL_DIR
-make -j8
+make -j$CPUCORES
 make install
 popd
 
@@ -44,7 +44,7 @@ cd build
 cmake .. \
   -DCMAKE_INSTALL_PREFIX=$PYBIND11_INSTALL_DIR \
   -GNinja
-ninja
+ninja -j$CPUCORES
 ninja install
 popd
 
