@@ -1,6 +1,7 @@
 #!/bin/sh
 
 POPART_DIR=${1:-$PWD/popart}
+DEBUG="-DCMAKE_BUILD_TYPE=Debug"
 
 export POPART_INSTALL_DIR=$POPART_DIR/install_dir/
 export PKG_CONFIG_PATH="$CAPNPROTO_INSTALL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH"
@@ -20,6 +21,7 @@ cmake .. \
   -Dspdlog_ROOT=$SPDLOG_INSTALL_DIR \
   -Dtrompeloeil_ROOT=$TROMPELOEIL_INSTALL_DIR \
   -DCMAKE_INSTALL_PREFIX=$POPART_INSTALL_DIR \
+  $DEBUG \
   -GNinja
 ninja -j64 install
 
