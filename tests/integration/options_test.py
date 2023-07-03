@@ -155,3 +155,9 @@ def test_customTransformApplierSettings():
     print("\ncustomTransformApplierSettings dict:")
     for opt, val in opts.experimentalSettings.customTransformApplierSettings.items():
         print("opt:", opt, "val:", val)
+
+
+def test_createHostTransferableTensorWithOffset():
+    opts = popart.SessionOptions()
+    opts.experimentalSettings.createHostTransferableTensorWithOffset = True
+    assert opts.experimentalSettings.createHostTransferableTensorWithOffset == True
