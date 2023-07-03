@@ -217,7 +217,6 @@ poplar::Tensor ExchangeDescriptorx::create(poplar::Graph &graph,
         {debugContext});
     auto dtype = popType(info.getDataTypeInfo()->type());
     offset += graph.getTarget().getTypeSize(dtype) * t.numElements();
-    std::cout << "offset: " << offset << std::endl;
     offsetMap.setOffset(graph, offset);
   }
 

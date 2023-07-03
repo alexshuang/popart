@@ -35,8 +35,9 @@
 #define protected public
 #define private public
 
-#include <testdevice.hpp>
+// #include <testdevice.hpp>
 #include <popart/builder.hpp>
+#include <popart/devicemanager.hpp>
 #include <popart/error.hpp>
 #include <popart/popx/devicex.hpp>
 #include <popart/popx/irlowering.hpp>
@@ -49,27 +50,30 @@
 #undef protected
 
 BOOST_AUTO_TEST_CASE(InitTensorOffsetMap) {
+  // In this test, the input tensors are the exact size of a packet bytes for
+  // one tile, Therefore, when createHostTransferableTensorWithOffset = true,
+  // the accumulated tensor bytes is passed to createHostTransferableTensor()
+  // as offset, and it mapping those tensors across tiles rather than mapping
+  // them all to tile0.
 
   using namespace popart;
 
   auto builder = Builder::create();
   auto aiOnnx  = builder->aiOnnxOpset9();
 
-  std::vector<int64_t> inputShape{4, 4};
+  // one packet per tile = 1024 bytes = 256 * FLOAT
+  std::vector<int64_t> inputShape{1, 256};
   TensorInfo inputInfo("FLOAT", inputShape);
 
-  // auto a = builder->addInputTensor(inputInfo, {TileSet:IO, ExchangeStrategy::OverlapInnerLoop});
-  // auto b = builder->addInputTensor(inputInfo, {TileSet:IO, ExchangeStrategy::OverlapInnerLoop});
-  // auto c = builder->addInputTensor(inputInfo, {TileSet:IO, ExchangeStrategy::OverlapInnerLoop});
-  auto a = builder->addInputTensor(inputInfo);
-  auto b = builder->addInputTensor(inputInfo);
-  auto c = builder->addInputTensor(inputInfo);
+  auto a = builder->addInputTensor(inputInfo, {TileSet::IO, ExchangeStrategy::OverlapInnerLoop});
+  auto b = builder->addInputTensor(inputInfo, {TileSet::IO, ExchangeStrategy::OverlapInnerLoop});
+  auto c = builder->addInputTensor(inputInfo, {TileSet::IO, ExchangeStrategy::OverlapInnerLoop});
   auto x = aiOnnx.add({a, b});
   x = aiOnnx.add({x, c});
   builder->addOutputTensor(x);
 
   auto proto    = builder->getModelProto();
-  auto dataFlow = DataFlow(5);
+  auto dataFlow = DataFlow(5, {{x, AnchorReturnType("All")}});
 
   SessionOptions opts;
   opts.virtualGraphMode = VirtualGraphMode::Auto;
@@ -78,7 +82,9 @@ BOOST_AUTO_TEST_CASE(InitTensorOffsetMap) {
   opts.numIOTiles = 32;
   opts.experimentalSettings.createHostTransferableTensorWithOffset = true;
 
-  auto device = createTestDevice(TestDeviceType::IpuModel21, 1, 128);
+  // auto device = createTestDevice(TestDeviceType::IpuModel21, 1, 64);
+  auto device = popart::DeviceManager::createDeviceManager()
+            .tryAcquireAvailableDevice(1, 1472);
 
   auto session = popart::InferenceSession::createFromOnnxModel(
       proto,
@@ -90,33 +96,38 @@ BOOST_AUTO_TEST_CASE(InitTensorOffsetMap) {
 
   session->prepareDevice();
 
-  std::cout << "compile done" << std::endl;
-
   using Mapping = poplar::Graph::TileToTensorMapping;
 
-  // Tensor shape: tile mapping
-  std::map<std::vector<size_t>, std::vector<Mapping>> mappings;
-  const auto &graph = session->getDevice().lowering().graph();
-  for (auto id : session->getDevice().lowering().tensors().tensors_) {
-    auto shape    = id.second->shape();
-    const auto tm = graph.getTileMapping(*id.second);
-    mappings[shape].push_back(tm);
-    std::cout << tm << std::endl;
+  auto getStartTile = [&](const Mapping &ans) {
+    unsigned index = 0;
+    for (unsigned i = 0; i < ans.size(); ++i) {
+      if (!ans[i].empty()) {
+        index = i;
+        break;
+      }
+    }
+    return index;
+  };
+
+  std::map<std::string, unsigned> startMappings;
+  auto &irLowering = session->getDevice().lowering();
+  const auto &ir = irLowering.ir();
+  for (auto &id: ir.getAllTensorIds()) {
+    auto *t = ir.getTensor(id);
+    if (t->isHostLoadTensor()) {
+      auto vgid = t->getVirtualGraphIdAndTileSetUnsafe();
+      auto &graph = irLowering.getVirtualGraph(vgid.first, vgid.second);
+      auto &tensor = irLowering.tensors().get(t->id);
+      const auto &tm = graph.getTileMapping(tensor);
+      auto startTile = getStartTile(graph.getTileMapping(tensor));
+      startMappings[t->id] = startTile;
+      std::cout << t->id << " : " << tm << std::endl;
+    }
   }
 
-  // for (const auto &shape_mappings : mappings) {
-
-  //   auto maps = shape_mappings.second;
-  //   for (auto m : maps) {
-  //     if (m != maps[0]) {
-  //       std::ostringstream oss;
-  //       oss << "In this test, we expect all Tensors of the same shape to have "
-  //           << "the same tile mappings, It is a test of the slice grad (pad) "
-  //              "to "
-  //           << "correctly locate and clone a corresponding forward Tensor. "
-  //           << "If correctly cloned, the tile mapping should be identical. ";
-  //       throw popart::error(oss.str());
-  //     }
-  //   }
-  // }
+  std::set<unsigned> uniqueMappings;
+  for (const auto &mappings : startMappings) {
+    BOOST_CHECK(uniqueMappings.insert(mappings.second).second == true);
+  }
+  BOOST_CHECK(uniqueMappings.size() == startMappings.size());
 }

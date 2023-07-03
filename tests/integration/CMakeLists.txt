@@ -45,6 +45,7 @@ add_unit_test(preplan_convolutions_test preplan_convolutions_test.cpp VARIANTS "
 add_unit_test(preplan_matmuls_test preplan_matmuls_test.cpp VARIANTS "IpuModel2")
 add_unit_test(rng_mapping_test rng_mapping_test.cpp)
 
+#add_unit_test(inittensoroffsetmap_test inittensoroffsetmap_test.cpp VARIANTS "Hw")
 add_unit_test(inittensoroffsetmap_test inittensoroffsetmap_test.cpp)
 
 # add_popart_py_unit_test(test_util) Utility
