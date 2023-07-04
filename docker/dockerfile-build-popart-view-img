@@ -1,0 +1,43 @@
+# Tested on ubuntu:20.04
+ARG base_image
+FROM ${base_image}
+
+LABEL maintainer="alexhu@graphcore.ai"
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    vim \
+    git \
+    gcc \
+    g++ \
+    make \
+    file \
+    cmake \
+    python3-pip \
+    python3-dev \
+    ninja-build \
+    pkg-config \
+    librdmacm-dev \
+    ctags \
+    ssh \
+    autoconf \
+    libtool \
+    php \
+    php-curl \
+    && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN pip install 'urllib3<1.27,>=1.26.6'
+
+RUN git clone https://github.com/google/googletest
+RUN cd googletest && cmake . -DCMAKE_CXX_FLAGS="-fpic" && make install
+
+RUN mkdir /opt/Arcanist && \
+    cd /opt/Arcanist && \
+    git clone https://github.com/phacility/libphutil.git && \
+    git clone https://github.com/phacility/arcanist.git && \
+    echo "export PATH=/opt/Arcanist/arcanist/bin:$PATH" >> ~/.bashrc
+
+WORKDIR /root
+COPY scripts scripts
