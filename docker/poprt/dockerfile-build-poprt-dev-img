@@ -1,0 +1,36 @@
+# base on ubuntu:20.04 only
+ARG base_image
+FROM ${base_image}
+
+LABEL maintainer="alexhu@graphcore.ai"
+
+# Install dependent packages
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wget \
+    vim \
+    git \
+    python3-pip \
+    ninja-build \
+    pkg-config \
+    librdmacm-dev \
+    cmake \
+    make \
+    g++ \
+    python3.8-dev \
+    python-clang \
+    ctags \
+    ssh \
+    && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.bz2 && \
+    tar xf boost_1_80_0.tar.bz2 && \
+    rm boost_1_80_0.tar.bz2 && \
+    cd boost_1_80_0 && \
+    ./bootstrap.sh --prefix=/opt/boost_1_80_0 && \
+    ./b2 link=static runtime-link=static --abbreviate-paths variant=release toolset=gcc "cxxflags= -fno-semantic-interposition -fPIC" cxxstd=14 --with-test --with-system --with-filesystem --with-program_options --with-graph --with-random install && \
+    echo "export Boost_DIR=/opt/boost_1_80_0" >> ~/.bashrc
+
+WORKDIR /root
+COPY scripts scripts

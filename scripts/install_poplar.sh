@@ -27,5 +27,10 @@ ln -s $PWD /opt/poplar
 echo -e "\nexport POPLAR_INSTALL_DIR=$PWD\n" >> ~/.bashrc
 echo "unset POPLAR_SDK_ENABLED" >> ~/.bashrc
 echo "source \$POPLAR_INSTALL_DIR/enable.sh" >> ~/.bashrc
+
+cd $DIR/poplar*/popart*
+echo -e "\nexport POPART_INSTALL_DIR=$PWD\n" >> ~/.bashrc
+echo "source \$POPART_INSTALL_DIR/enable.sh" >> ~/.bashrc
+
 echo "done"
 echo "You need to source ~/.bashrc to enable poplar SDK."
