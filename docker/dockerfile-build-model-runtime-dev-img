@@ -1,0 +1,71 @@
+ARG base_img=ubuntu:20.04
+FROM $base_img
+
+LABEL maintainer="alexhu@graphcore.ai"
+
+# Install dependent packages
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wget \
+    vim \
+    git \
+    make \
+    g++ \
+    ctags \
+    ssh \
+    python3 \
+    python3-pip \
+    python3.8-dev \
+    ninja-build \
+    && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Poplar
+ADD data/poplar_sdk-*.tar.gz /opt/
+RUN cd /opt/poplar*/poplar* && \
+    echo "export POPLAR_INSTALL_DIR=$PWD" >> ~/.bashrc && \
+    echo "unset POPLAR_SDK_ENABLED" >> ~/.bashrc && \
+    echo "source \$POPLAR_INSTALL_DIR/enable.sh" >> ~/.bashrc && \
+    cd /opt/poplar*/popart* && \
+    echo "export POPART_INSTALL_DIR=$PWD" >> ~/.bashrc && \
+    echo "source \$POPART_INSTALL_DIR/enable.sh" >> ~/.bashrc && \
+    ln -s /opt/poplar*/poplar* /opt/poplar && \
+    ln -s /opt/poplar*/popart* /opt/popart
+
+# Install cmake
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3-linux-x86_64.sh && \
+    bash cmake-3.26.3-linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm -f cmake-3.26.3-linux-x86_64.sh
+
+# Install deps
+ENV BOOST_INSTALL_DIR=/opt/boost-1.80.0/install_dir
+ENV SPDLOG_INSTALL_DIR=/opt/spdlog/install_dir
+ENV PYBIND11_INSTALL_DIR=/opt/pybind11-2.6.2/install_dir
+
+WORKDIR /tmp_build
+RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.bz2 && \
+    tar xf boost_1_80_0.tar.bz2 && \
+    rm boost_1_80_0.tar.bz2 && \
+    cd boost_1_80_0 && \
+    ./bootstrap.sh --prefix=$BOOST_INSTALL_DIR && \
+    ./b2 -j30 link=static runtime-link=static --abbreviate-paths variant=release toolset=gcc "cxxflags= -fno-semantic-interposition -fPIC" cxxstd=14 --with-test --with-system --with-filesystem --with-program_options --with-graph --with-random install
+
+RUN git clone --branch v1.8.0 https://github.com/gabime/spdlog.git && \
+    cd spdlog && mkdir build && cd build && \
+    cmake .. -GNinja -DCMAKE_INSTALL_PREFIX=$SPDLOG_INSTALL_DIR && cmake --build . --target install
+
+RUN wget https://github.com/pybind/pybind11/archive/v2.6.2.tar.gz && \
+    tar xf v2.6.2.tar.gz && \
+    rm v2.6.2.tar.gz && \
+    cd pybind11-2.6.2 && \
+    mkdir build && \
+    mkdir install_dir && \
+    cd build && \
+    cmake .. \
+      -DCMAKE_INSTALL_PREFIX=$PYBIND11_INSTALL_DIR \
+      -GNinja && \
+    ninja -j30 && \
+    ninja install
+
+WORKDIR /root
+RUN rm -rf /tmp_build
